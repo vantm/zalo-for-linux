@@ -538,6 +538,32 @@ let
   # normal package exposing `bin/zalo`.
   mkZalo =
     { pname }:
+    let
+      tree = mkZaloTree { inherit pname; };
+
+      # Launcher entry; Exec is rewritten below to this package's own wrapper.
+      desktopItem = pkgs.makeDesktopItem {
+        name = "zalo";
+        desktopName = "Zalo";
+        genericName = "Chat";
+        comment = "Unofficial Zalo client for Linux";
+        exec = "zalo %U";
+        icon = "zalo";
+        terminal = false;
+        startupNotify = true;
+        startupWMClass = "zalo";
+        categories = [
+          "Network"
+          "InstantMessaging"
+        ];
+        keywords = [
+          "zalo"
+          "chat"
+          "messaging"
+          "im"
+        ];
+      };
+    in
     pkgs.buildFHSEnv {
       inherit pname;
       version = versions.zaloVersion;
@@ -557,12 +583,31 @@ let
       multiPkgs = runtime.multiLibs;
       multiArch = pkgs.stdenv.hostPlatform.isx86_64;
 
-      runScript = "${mkZaloTree { inherit pname; }}/bin/zalo";
+      runScript = "${tree}/bin/zalo";
 
       profile = ''
         # Electron's setuid sandbox is unusable inside the bwrap sandbox.
         export ELECTRON_DISABLE_SANDBOX=1
         export APPIMAGE_EXTRACT_AND_RUN=1
+      '';
+
+      # Freedesktop entry + icon, so the app can be launched from a menu
+      # instead of a terminal. Exec points at this package's own wrapper, so
+      # the bwrap sandbox is set up correctly.
+      extraInstallCommands = ''
+        install -d \
+          $out/share/applications \
+          $out/share/icons/hicolor/512x512/apps
+
+        install -m 0644 ${tree}/opt/zalo/app/pc-dist/favicon-512x512.png \
+          $out/share/icons/hicolor/512x512/apps/zalo.png
+
+        install -m 0644 ${desktopItem}/share/applications/zalo.desktop \
+          $out/share/applications/zalo.desktop
+
+        # Point Exec at the sandboxed wrapper rather than bare `zalo`.
+        sed -i "s|^Exec=.*|Exec=$out/bin/zalo %U|" \
+          $out/share/applications/zalo.desktop
       '';
 
       meta = {
