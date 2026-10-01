@@ -25,9 +25,13 @@
         pkgs = import nixpkgs {
           inherit system;
           overlays = [ (import rust-overlay) ];
+          # zalo-for-linux bundles proprietary Zalo code extracted from the
+          # vendored .dmg, so the package is marked unfree.
+          config.allowUnfree = true;
         };
 
         shells = import ./nix/devshell.nix { inherit pkgs; };
+        zaloPkgs = import ./nix/package.nix { inherit pkgs; };
       in
       {
         # `nix fmt` formats the flake files.
@@ -39,6 +43,9 @@
         packages = {
           default = shells.fhsRun;
           fhs = shells.fhsRun;
+        }
+        // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          inherit (zaloPkgs) zalo-for-linux zalo-for-linux-full;
         };
 
         apps = {
