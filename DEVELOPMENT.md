@@ -22,6 +22,50 @@ On Debian/Ubuntu:
 sudo apt-get update && sudo apt-get install -y p7zip-full build-essential libssl-dev liblzma-dev
 ```
 
+## Nix / NixOS
+
+A flake provides the whole toolchain, so no host packages are needed. It works
+on any Linux with flakes enabled, and is the recommended path on NixOS.
+
+```bash
+nix develop          # full environment (FHS sandbox)
+# or, with direnv installed:
+direnv allow
+```
+
+Inside the shell everything from the prerequisites list is already available:
+Node 22, Rust (pinned), `7z`, gcc/g++, the i686 mingw cross compiler, zsync,
+plus the 32-bit toolchain and wine needed by the call bridge.
+
+There are two shells:
+
+| Shell | Command | Use |
+|-------|---------|-----|
+| `default` | `nix develop` | Build and run the app. Wraps everything in an FHS sandbox so Electron 22, electron-builder and appimagetool (prebuilt glibc binaries) run on NixOS, and so 32-bit wine works. |
+| `light` | `nix develop .#light` | Plain shell for editing, `cargo`, and native addon builds. No FHS sandbox — Electron and AppImage packaging will not run here. |
+
+Then the usual workflow applies:
+
+```bash
+npm ci
+npm run main            # setup + build, output in dist/
+npm start               # run the app from the extracted app/ directory
+```
+
+Notes:
+
+- `nix develop -c <cmd>` runs a single command in the **light** shell, e.g.
+  `nix develop .#light -c npm ci`. It does not work in the FHS shell: the
+  sandbox entry point `exec`s the shell, so the command never reaches it. Use
+  the runnable wrapper there instead — `nix run .#fhs -- -c 'npm ci'`.
+- The shell exports `APPIMAGE_EXTRACT_AND_RUN=1` (run AppImages without FUSE)
+  and `ELECTRON_DISABLE_SANDBOX=1` (the Chromium sandbox cannot be nested inside
+  the FHS bubblewrap sandbox).
+- The first build downloads the Zalo DMG, the Windows installer and Electron
+  headers, so it needs network access.
+- `nix fmt` formats the Nix files (`nixfmt`).
+- On aarch64 the mingw/32-bit pieces are omitted, matching CI.
+
 ## Quick Start
 
 ```bash
