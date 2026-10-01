@@ -21,6 +21,7 @@ yarn-error.log*
 # OS-generated files
 .DS_Store
 Thumbs.db
+nohup.out
 
 # IDE configuration
 .vscode/
@@ -133,4 +134,4 @@ typings/
 
 # Temporary directories
 tmp/
-temp/ 
+temp/
