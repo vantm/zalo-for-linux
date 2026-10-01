@@ -30,6 +30,11 @@ Thumbs.db
 .env
 .env.local
 
+# Nix
+.direnv/
+/result
+/result-*
+
 # Downloaded artifacts
 *.dmg
 *.AppImage
