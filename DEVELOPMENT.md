@@ -66,6 +66,46 @@ Notes:
 - `nix fmt` formats the Nix files (`nixfmt`).
 - On aarch64 the mingw/32-bit pieces are omitted, matching CI.
 
+## Packaging (`nix build`)
+
+The flake also builds the app from source into a runnable x86_64 package:
+
+```bash
+nix build .#zalo-for-linux        # ZaDark integration
+nix build .#zalo-for-linux-full   # ZaDark + bundled portable wine
+./result/bin/zalo
+```
+
+Unlike `npm run main`, the Nix build is hermetic — **nothing is downloaded
+while building**. Every upstream artifact is a fixed-output derivation pinned in
+[`nix/versions.nix`](./nix/versions.nix) (the macOS DMG, the Windows installer,
+Electron 22, portable wine, ZaDark, the sqlite3 N-API prebuilt), and every
+JavaScript and Rust dependency is vendored.
+
+The pipeline in [`nix/package.nix`](./nix/package.nix) mirrors the upstream one:
+
+1. `7z` + `@electron/asar` extract `app.asar` and the upstream patch scripts in
+   `scripts/patches/` are run unmodified. Their in-place compiler calls are
+   neutralised with no-op shims because the native addons are built separately.
+2. Native addons are built as their own derivations — the five Rust crates via
+   `rustPlatform` and `db-cross-v4` compiled directly from `binding.gyp` inputs.
+3. `streamproxy.so` (32-bit, `gcc_multi` + i686 X headers) and `pipebridge.exe`
+   (i686 mingw + mcfgthread) are compiled, and the ZaloCall Qt runtime is
+   extracted from the Windows installer.
+4. electron-builder and quick-sharun are **not** used. The app is laid out by
+   hand (Electron 22 dist + `resources/app` + `app/` + `zcall-bridge/`) and
+   wrapped for NixOS with `autoPatchelf`/`makeWrapper`.
+
+> The package bundles proprietary Zalo code extracted from the vendored DMG, so
+> it is marked `unfree`. The flake sets `config.allowUnfree = true` in its own
+> package set; consumers of the output need to allow unfree too.
+
+To bump a version: update `nix/versions.nix` and refresh the affected hashes with
+`nix store prefetch-file --json <url>` (or `nix run nixpkgs#prefetch-npm-deps --
+<npm-lock>` for the npm trees). The ZaDark manifest/lock under `nix/` exist only
+because `plugins/zadark` is a submodule; they pin that submodule's dependency
+closure.
+
 ## Quick Start
 
 ```bash

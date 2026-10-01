@@ -1,0 +1,118 @@
+{
+  "name": "zadark",
+  "description": "Dark Mode tốt nhất cho Zalo",
+  "version": "26.2.1",
+  "repository": "https://github.com/ncdai/zadark.git",
+  "author": {
+    "name": "Quaric",
+    "email": "hello@quaric.com",
+    "url": "https://quaric.com"
+  },
+  "contributors": [
+    {
+      "name": "Nguyen Chanh Dai",
+      "email": "dai@chanhdai.com",
+      "url": "https://github.com/ncdai"
+    }
+  ],
+  "license": "MPL-2.0",
+  "scripts": {
+    "dev": "NODE_ENV=development gulp dev",
+    "build": "NODE_ENV=development gulp build",
+    "dist": "gulp dist",
+    "dist:web": "gulp distWeb",
+    "dist:pc": "gulp distPC",
+    "pc:dev": "NODE_ENV=development node build/pc",
+    "pc:start": "NODE_ENV=production node build/pc",
+    "prepare": "husky install",
+    "standard:fix": "standard --fix ./src/**/*.js ./*.js",
+    "safari": "xed src/web/vendor/safari/ZaDark.xcodeproj",
+    "safari:what-build-number": "cd src/web/vendor/safari && xcrun agvtool what-version",
+    "safari:next-build-number": "cd src/web/vendor/safari && xcrun agvtool new-version -all $(date '+%s')"
+  },
+  "lint-staged": {
+    "*.js": "yarn standard:fix"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "chrome-webstore-upload-cli": "^3.3.2",
+    "del": "^6.0.0",
+    "gulp": "^4.0.2",
+    "gulp-concat": "^2.6.1",
+    "gulp-crx-pack": "^1.0.3",
+    "gulp-gzip": "^1.4.2",
+    "gulp-hashsum": "^1.2.0",
+    "gulp-minify": "^3.1.0",
+    "gulp-rename": "^2.0.0",
+    "gulp-sass": "^5.1.0",
+    "gulp-sort": "^2.0.0",
+    "gulp-tar": "3.1.0",
+    "gulp-zip": "^5.1.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.2",
+    "merge-stream": "^2.0.0",
+    "nodemon": "^2.0.15",
+    "pkg": "^5.8.1",
+    "resedit": "^2.0.0",
+    "sass": "^1.74.1",
+    "standard": "^16.0.4"
+  },
+  "dependencies": {
+    "@electron/asar": "3.3.1",
+    "chalk": "4.1.2",
+    "cross-spawn": "^7.0.3",
+    "fs-extra": "^11.2.0",
+    "glob": "^7.2.0",
+    "inquirer": "^8.0.0",
+    "node-html-parser": "^5.2.0",
+    "prompt-sync": "^4.2.0"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "global": [
+      "ZaDarkBrowser",
+      "ZaDarkUtils",
+      "ZaDarkFonts",
+      "ZaDarkTranslate",
+      "ZaDarkShared",
+      "$",
+      "jQuery",
+      "chrome",
+      "browser",
+      "bowser",
+      "Popper",
+      "tippy",
+      "hotkeys",
+      "Toastify",
+      "WebFont",
+      "introJs",
+      "localStorage",
+      "MutationObserver",
+      "fetch",
+      "requestAnimationFrame",
+      "Blob",
+      "FileReader",
+      "Image",
+      "CustomEvent",
+      "DEBUG",
+      "ZADARK_API_DOMAIN",
+      "ZADARK_API_URL"
+    ],
+    "ignore": [
+      "src/web/libs/**/*.js",
+      "src/pc/assets/libs/**/*.js",
+      "src/web/vendor/safari/ZaDark/**/*.js",
+      "src/web/vendor/safari/ZaDark Extension/**/*.js",
+      "src/web/vendor/safari/ZaDark.xcodeproj/**/*.js"
+    ]
+  },
+  "engines": {
+    "node": ">=16.16"
+  },
+  "overrides": {
+    "crx": "5.0.1",
+    "gulp-crx-pack": {
+      "crx": "5.0.1"
+    }
+  }
+}
