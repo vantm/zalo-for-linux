@@ -96,6 +96,12 @@ The pipeline in [`nix/package.nix`](./nix/package.nix) mirrors the upstream one:
    hand (Electron 22 dist + `resources/app` + `app/` + `zcall-bridge/`) and
    wrapped for NixOS with `autoPatchelf`/`makeWrapper`.
 
+The call engine runs under `pkgs.wineWow64Packages.stable`, exposed to the app
+as `ZCALL_WINE` (its highest-priority wine). The upstream portable Kron4ek wine
+needs 32-bit host libraries that NixOS does not provide, so it is not used here;
+the wow64 build runs the 32-bit `ZaloCall.exe`/`pipebridge.exe` under a 64-bit
+host.
+
 > The package bundles proprietary Zalo code extracted from the vendored DMG, so
 > it is marked `unfree`. The flake sets `config.allowUnfree = true` in its own
 > package set; consumers of the output need to allow unfree too.
