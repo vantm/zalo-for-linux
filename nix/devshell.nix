@@ -15,6 +15,10 @@
 let
   inherit (pkgs) lib;
 
+  # Shared with nix/package.nix so the dev shell and the packaged FHS wrapper
+  # expose the same libraries.
+  runtime = import ./runtime-libs.nix { inherit pkgs; };
+
   isX86_64 = pkgs.stdenv.hostPlatform.isx86_64;
 
   # Pinned to a specific stable release (not `latest`) for reproducibility.
@@ -116,49 +120,7 @@ let
   # FHS payload: Electron 22 / electron-builder / appimagetool runtime libs,
   # a compiler, and wine.
   # ---------------------------------------------------------------------------
-  electronLibs = with pkgs; [
-    nss
-    nspr
-    gtk3
-    gdk-pixbuf
-    glib
-    cairo
-    pango
-    harfbuzz
-    atk
-    at-spi2-atk
-    at-spi2-core
-    cups
-    dbus
-    libdrm
-    mesa
-    libgbm
-    libGL
-    libX11
-    libxcb
-    libXext
-    libXrandr
-    libXcursor
-    libXi
-    libXcomposite
-    libXdamage
-    libXfixes
-    libXtst
-    libXrender
-    libxshmfence
-    libxkbcommon
-    alsa-lib
-    pulseaudio
-    systemd
-    fontconfig
-    freetype
-    expat
-    krb5
-    libappindicator-gtk3
-    libnotify
-    util-linux
-    fuse3
-  ];
+  electronLibs = runtime.electronLibs;
 
   fhsPackages =
     nativeTools
@@ -172,26 +134,7 @@ let
     ++ electronLibs;
 
   # 32-bit libraries for wine (and for loading the compiled streamproxy.so).
-  multiLibs =
-    p:
-    lib.optionals isX86_64 [
-      p.libX11
-      p.libxcb
-      p.libXext
-      p.libXrender
-      p.libXrandr
-      p.libXi
-      p.mesa
-      p.libGL
-      p.libdrm
-      p.alsa-lib
-      p.pulseaudio
-      p.zlib
-      p.glib
-      p.freetype
-      p.fontconfig
-      p.expat
-    ];
+  multiLibs = runtime.multiLibs;
 
   banner = ''
     echo "zalo-for-linux dev shell"

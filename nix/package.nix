@@ -45,51 +45,14 @@ let
   };
 
   # ---------------------------------------------------------------------------
-  # Runtime libraries. buildFHSEnv-style closures are not available in a plain
-  # derivation, so the Electron/GTK/Chromium dependency set is listed explicitly
-  # and wired up with autoPatchelfHook.
+  # Runtime libraries. Shared with the dev shell (nix/runtime-libs.nix) so both
+  # expose the same closure. The package wraps the app in an FHS (see mkZalo):
+  # Chromium only launches its helper processes correctly inside a real
+  # filesystem view, so a plain RPATH derivation shows no window. The same list
+  # still feeds autoPatchelfHook for the Electron binary's DT_NEEDED graph.
   # ---------------------------------------------------------------------------
-  runtimeLibs = with pkgs; [
-    alsa-lib
-    at-spi2-atk
-    at-spi2-core
-    atk
-    cairo
-    cups
-    dbus
-    expat
-    fontconfig
-    freetype
-    gdk-pixbuf
-    glib
-    gtk3
-    harfbuzz
-    krb5
-    libdrm
-    libGL
-    libgbm
-    libnotify
-    libxkbcommon
-    libX11
-    libXcomposite
-    libXcursor
-    libXdamage
-    libXext
-    libXfixes
-    libXi
-    libXrandr
-    libXrender
-    libxshmfence
-    libXtst
-    mesa
-    nspr
-    nss
-    pango
-    pulseaudio
-    stdenv.cc.cc.lib
-    systemd
-    util-linux
-  ];
+  runtime = import ./runtime-libs.nix { inherit pkgs; };
+  runtimeLibs = runtime.electronLibs ++ [ pkgs.stdenv.cc.cc.lib ];
 
   # ---------------------------------------------------------------------------
   # Electron 22 runtime, patched for NixOS.
@@ -496,7 +459,10 @@ let
     '';
   };
 
-  mkZalo =
+  # The assembled application tree: Electron 22 + resources/app + app/ +
+  # zcall-bridge/, with a wrapper that pins the runtime environment (wine,
+  # gdk-pixbuf loaders, gsettings schemas). The FHS wrapper below executes this.
+  mkZaloTree =
     { pname }:
     pkgs.stdenv.mkDerivation {
       inherit pname;
@@ -556,11 +522,54 @@ let
       };
 
       meta = {
-        description = "Unofficial Zalo client for Linux";
+        description = "Unofficial Zalo client for Linux (unwrapped app tree)";
         homepage = "https://github.com/doandat943/zalo-for-linux";
         license = lib.licenses.unfree;
         sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
         mainProgram = "zalo";
+        platforms = [ "x86_64-linux" ];
+      };
+    };
+
+  # Wrap the app tree in the same FHS environment the dev shell provides.
+  # Chromium needs a real filesystem view (merged /usr/lib, /etc,
+  # XDG_DATA_DIRS, GStreamer paths) to launch its helper processes; without it
+  # the process starts but never shows a window. buildFHSEnv keeps the output a
+  # normal package exposing `bin/zalo`.
+  mkZalo =
+    { pname }:
+    pkgs.buildFHSEnv {
+      inherit pname;
+      version = versions.zaloVersion;
+
+      # Keep the command name stable (`result/bin/zalo`) even though the
+      # derivation is named after pname.
+      executableName = "zalo";
+
+      targetPkgs =
+        _:
+        runtime.electronLibs
+        ++ (with pkgs; [
+          wineWow64Packages.stable
+          xdg-utils
+        ]);
+
+      multiPkgs = runtime.multiLibs;
+      multiArch = pkgs.stdenv.hostPlatform.isx86_64;
+
+      runScript = "${mkZaloTree { inherit pname; }}/bin/zalo";
+
+      profile = ''
+        # Electron's setuid sandbox is unusable inside the bwrap sandbox.
+        export ELECTRON_DISABLE_SANDBOX=1
+        export APPIMAGE_EXTRACT_AND_RUN=1
+      '';
+
+      meta = {
+        description = "Unofficial Zalo client for Linux";
+        homepage = "https://github.com/doandat943/zalo-for-linux";
+        license = lib.licenses.unfree;
+        sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
         platforms = [ "x86_64-linux" ];
       };
     };
