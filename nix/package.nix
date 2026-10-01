@@ -304,6 +304,12 @@ let
   mingwCC = pkgs.pkgsCross.mingw32.stdenv.cc;
   mcfgthreads = pkgs.pkgsCross.mingw32.windows.mcfgthreads;
 
+  # Wine for the call engine. The upstream portable Kron4ek build needs 32-bit
+  # host libraries, which NixOS does not provide; nixpkgs' wow64 build runs the
+  # 32-bit ZaloCall/pipebridge under a 64-bit host and is pointed at with
+  # ZCALL_WINE (the plugin's highest-priority wine).
+  wine = pkgs.wineWow64Packages.stable;
+
   zcallBridge = pkgs.stdenv.mkDerivation {
     pname = "zalo-zcall-bridge";
     version = "1.0.0";
@@ -466,6 +472,8 @@ let
       mkdir -p app/native/qt-call-and-cap
       cp -r ${zcallRuntime}/qt-call-and-cap/. app/native/qt-call-and-cap/
       cp ${zcallBridge}/streamproxy.so ${zcallBridge}/pipebridge.exe zcall-bridge/
+      # The wine validator looks for pipebridge.exe next to ZaloCall.exe.
+      cp ${zcallBridge}/pipebridge.exe app/native/qt-call-and-cap/
 
       runHook postBuild
     '';
@@ -489,10 +497,7 @@ let
   };
 
   mkZalo =
-    {
-      pname,
-      withWine ? false,
-    }:
+    { pname }:
     pkgs.stdenv.mkDerivation {
       inherit pname;
       version = versions.zaloVersion;
@@ -517,11 +522,6 @@ let
         cp -r ${zaloApp}/zcall-bridge $out/opt/zalo/zcall-bridge
         mkdir -p $out/opt/zalo/resources/app
         cp -r ${zaloApp}/resources-app/. $out/opt/zalo/resources/app/
-        chmod -R u+w $out/opt/zalo
-        ${lib.optionalString withWine ''
-          mkdir -p $out/opt/zalo/app/native/wine-runtime
-          tar xf ${wineTarball} -C $out/opt/zalo/app/native/wine-runtime --strip-components=1
-        ''}
 
         # Everything copied out of the store is read-only.
         chmod -R u+w $out/opt/zalo
@@ -535,6 +535,7 @@ let
         makeWrapper $out/opt/zalo/electron $out/bin/zalo \
           --add-flags "--no-sandbox" \
           --set ELECTRON_DISABLE_SANDBOX 1 \
+          --set ZCALL_WINE "${wine}/bin/wine" \
           --set GDK_PIXBUF_MODULE_FILE "${pkgs.gdk-pixbuf}/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" \
           --prefix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}" \
           --prefix XDG_DATA_DIRS : "${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}" \
@@ -581,11 +582,11 @@ in
     zcallBridge
     zcallRuntime
     zaloApp
+    wine
     ;
 
+  # Both variants now ship the same NixOS-capable wine (ZCALL_WINE); the
+  # upstream portable bundle could not run here. `-full` is kept as an alias.
   zalo-for-linux = mkZalo { pname = "zalo-for-linux"; };
-  zalo-for-linux-full = mkZalo {
-    pname = "zalo-for-linux-full";
-    withWine = true;
-  };
+  zalo-for-linux-full = mkZalo { pname = "zalo-for-linux-full"; };
 }
