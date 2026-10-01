@@ -98,7 +98,10 @@ The pipeline in [`nix/package.nix`](./nix/package.nix) mirrors the upstream one:
    helper processes (zygote/GPU/renderer) by `dlopen`-ing libraries and shelling
    out against a full filesystem view; a plain RPATH derivation starts Electron
    but never shows a window. `nix/runtime-libs.nix` is the single source of
-   truth for the library set shared by the dev shell and the package FHS.
+   truth for the library set shared by the dev shell and the package FHS. The
+   FHS output also installs a freedesktop entry and icon under `share/`
+   (`makeDesktopItem` + the app's `favicon-512x512.png`), so the app shows up in
+   menu launchers; `Exec` points at the sandboxed `bin/zalo`.
 
 The call engine runs under `pkgs.wineWow64Packages.stable`, exposed to the app
 as `ZCALL_WINE` (its highest-priority wine). The upstream portable Kron4ek wine
