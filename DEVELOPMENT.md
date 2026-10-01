@@ -93,6 +93,12 @@ The pipeline in [`nix/package.nix`](./nix/package.nix) mirrors the upstream one:
 4. electron-builder and quick-sharun are **not** used. The app is laid out by
    hand (Electron 22 dist + `resources/app` + `app/` + `zcall-bridge/`) and
    wrapped for NixOS with `autoPatchelf`/`makeWrapper`.
+5. That tree is then wrapped in `pkgs.buildFHSEnv` (`mkZalo`), so
+   `result/bin/zalo` runs **outside** `nix develop`. Chromium launches its
+   helper processes (zygote/GPU/renderer) by `dlopen`-ing libraries and shelling
+   out against a full filesystem view; a plain RPATH derivation starts Electron
+   but never shows a window. `nix/runtime-libs.nix` is the single source of
+   truth for the library set shared by the dev shell and the package FHS.
 
 The call engine runs under `pkgs.wineWow64Packages.stable`, exposed to the app
 as `ZCALL_WINE` (its highest-priority wine). The upstream portable Kron4ek wine
