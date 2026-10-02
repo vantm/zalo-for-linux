@@ -16,12 +16,24 @@ const LAUNCHER_OPTIONS_ORIGINAL =
   'else if("win32"===process.platform){let t=o.join(o.dirname(i.getPath("exe")),"..","Zalo.exe");e.path=t}d=new r(e)';
 // On Linux, isHidden makes auto-launch append `--hidden` to the autostart Exec
 // line, which plugins/start-hidden handles by starting in the tray (#58).
+//
+// The launcher path is what gets written into the autostart `.desktop`. Upstream
+// uses APPIMAGE (its AppImage build) or the running executable. Neither is right
+// for the Nix package: the running executable is the unwrapped store Electron,
+// which cannot start Chromium's helpers outside the FHS. ZALO_LINUX_LAUNCHER is
+// exported by the FHS wrapper (nix/package.nix) so the entry re-enters the FHS.
+const LINUX_LAUNCHER =
+  'process.env.ZALO_LINUX_LAUNCHER||process.env.APPIMAGE||i.getPath("exe")';
 const LAUNCHER_OPTIONS_PATCHED =
-  'else if("win32"===process.platform){let t=o.join(o.dirname(i.getPath("exe")),"..","Zalo.exe");e.path=t}else if("linux"===process.platform)e.path=process.env.APPIMAGE||i.getPath("exe"),e.isHidden=!0;d=new r(e)';
+  'else if("win32"===process.platform){let t=o.join(o.dirname(i.getPath("exe")),"..","Zalo.exe");e.path=t}else if("linux"===process.platform)e.path=' +
+  LINUX_LAUNCHER +
+  ',e.isHidden=!0;d=new r(e)';
 const COMPACT_LAUNCHER_OPTIONS_ORIGINAL =
   'else if("win32"===process.platform){let t=o.join(o.dirname(i.getPath("exe")),"..","Zalo.exe");e.path=t}u=new r(e)';
 const COMPACT_LAUNCHER_OPTIONS_PATCHED =
-  'else if("win32"===process.platform){let t=o.join(o.dirname(i.getPath("exe")),"..","Zalo.exe");e.path=t}else if("linux"===process.platform)e.path=process.env.APPIMAGE||i.getPath("exe"),e.isHidden=!0;u=new r(e)';
+  'else if("win32"===process.platform){let t=o.join(o.dirname(i.getPath("exe")),"..","Zalo.exe");e.path=t}else if("linux"===process.platform)e.path=' +
+  LINUX_LAUNCHER +
+  ',e.isHidden=!0;u=new r(e)';
 
 // const GET_LAUNCHER_ORIGINAL = 'getZaloLauncher:()=>l';
 // const GET_LAUNCHER_PATCHED = 'getZaloLauncher:()=>{if(!l)u(d);return l}';
