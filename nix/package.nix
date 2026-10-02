@@ -591,6 +591,16 @@ let
         export APPIMAGE_EXTRACT_AND_RUN=1
       '';
 
+      # Zalo writes an XDG autostart entry on first run; its launcher path is
+      # taken from ZALO_LINUX_LAUNCHER (see scripts/patches/patch-auto-launch.js).
+      # Export this wrapper's canonical store path so a login-time launch
+      # re-enters the FHS instead of running the bare store Electron, which
+      # cannot start Chromium's helper processes. `readlink -f` also handles
+      # `result/bin/zalo` and relative invocations.
+      extraPreBwrapCmds = ''
+        export ZALO_LINUX_LAUNCHER="$(${pkgs.coreutils}/bin/readlink -f -- "$0")"
+      '';
+
       # Freedesktop entry + icon, so the app can be launched from a menu
       # instead of a terminal. Exec points at this package's own wrapper, so
       # the bwrap sandbox is set up correctly.

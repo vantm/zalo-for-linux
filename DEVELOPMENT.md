@@ -103,7 +103,11 @@ The pipeline in [`nix/package.nix`](./nix/package.nix) mirrors the upstream one:
    truth for the library set shared by the dev shell and the package FHS. The
    FHS output also installs a freedesktop entry and icon under `share/`
    (`makeDesktopItem` + the app's `favicon-512x512.png`), so the app shows up in
-   menu launchers; `Exec` points at the sandboxed `bin/zalo`.
+   menu launchers; `Exec` points at the sandboxed `bin/zalo`. Zalo's own "start
+   with system" writes an XDG autostart entry; the FHS exports
+   `ZALO_LINUX_LAUNCHER` (consumed by `scripts/patches/patch-auto-launch.js`) so
+   that entry points back at the FHS wrapper instead of the bare store Electron,
+   which cannot start Chromium's helpers.
 
 The call engine runs under `pkgs.wineWow64Packages.stable`, exposed to the app
 as `ZCALL_WINE` (its highest-priority wine). The upstream portable Kron4ek wine
