@@ -27,8 +27,6 @@ on any Linux with flakes enabled, and is the recommended path on NixOS.
 
 ```bash
 nix develop          # full environment (FHS sandbox)
-# or, with direnv installed:
-direnv allow
 ```
 
 Inside the shell everything from the prerequisites list is already available:
