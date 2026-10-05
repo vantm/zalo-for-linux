@@ -1,0 +1,33 @@
+qcap: zero the AM_MEDIA_TYPE fields the wow64 marshaler cannot transfer
+
+On a pure wow64 build the 64-bit unix qcap.so hands an AM_MEDIA_TYPE back
+to the 32-bit guest through put_media_type(), which only copies the six
+small fields. cbFormat/pbFormat cannot be copied because pbFormat points
+into 64-bit memory, so the win32 caller (AMStreamConfig_GetStreamCaps/
+GetFormat, VfwPin source_get_media_type) fills them in afterwards. pUnk,
+however, is left untouched, so it keeps whatever the uninitialised
+CoTaskMemAlloc()'d memory held (often 0xffffffff). FreeMediaType() then
+dereferences that bogus pointer and Release()s it, faulting in the app.
+
+ZaloCall hits this as soon as the camera is opened:
+  Unhandled exception: page fault on read access to 0xffffffff
+  =>0 0x0109176e in zalocall (movl (%ecx), %eax with ecx = 0xffffffff)
+
+Clear pUnk as well as cbFormat/pbFormat so the guest always sees a valid,
+empty media type.
+
+--- a/dlls/qcap/v4l.c
++++ b/dlls/qcap/v4l.c
+@@ -699,6 +699,12 @@
+     mt32->bTemporalCompression = mt->bTemporalCompression;
+     mt32->lSampleSize          = mt->lSampleSize;
+     mt32->formattype           = mt->formattype;
++    /* pbFormat points into 64-bit memory and is set up by the win32 caller,
++     * but pUnk is never initialised anywhere and would keep stale garbage,
++     * crashing FreeMediaType() on IUnknown_Release(). */
++    mt32->pUnk                 = 0;
++    mt32->cbFormat             = 0;
++    mt32->pbFormat             = 0;
+ }
+ 
+ static NTSTATUS wow64_v4l_device_create( void *args )

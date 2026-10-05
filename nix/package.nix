@@ -274,7 +274,20 @@ let
   # host libraries, which NixOS does not provide; nixpkgs' wow64 build runs the
   # 32-bit ZaloCall/pipebridge under a 64-bit host and is pointed at with
   # ZCALL_WINE (the plugin's highest-priority wine).
-  wine = pkgs.wineWow64Packages.stable;
+  #
+  # `stable` is the plain `base` set and leaves `v4lSupport`/`gstreamerSupport`
+  # off, so qcap has no libv4l2 and no winegstreamer is built: the camera then
+  # enumerates but never delivers frames ("Reading from ... requires libv4l2,
+  # but Wine was compiled without libv4l2 support."). Both are required for
+  # video calls and in-app photo capture, so force them on.
+  wine = (pkgs.wineWow64Packages.stable.override {
+    v4lSupport = true;
+    gstreamerSupport = true;
+  }).overrideAttrs (old: {
+    # uninitialised AM_MEDIA_TYPE.pUnk makes ZaloCall fault the moment the
+    # camera is opened on this pure-wow64 build (see the patch header).
+    patches = (old.patches or [ ]) ++ [ ./patches/wine-qcap-wow64-init-media-type.patch ];
+  });
 
   zcallBridge = pkgs.stdenv.mkDerivation {
     pname = "zalo-zcall-bridge";
@@ -578,10 +591,10 @@ let
       targetPkgs =
         _:
         runtime.electronLibs
-        ++ (with pkgs; [
-          wineWow64Packages.stable
-          xdg-utils
-        ]);
+        ++ [
+          wine
+          pkgs.xdg-utils
+        ];
 
       multiPkgs = runtime.multiLibs;
       multiArch = pkgs.stdenv.hostPlatform.isx86_64;
