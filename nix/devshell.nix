@@ -21,6 +21,18 @@ let
 
   isX86_64 = pkgs.stdenv.hostPlatform.isx86_64;
 
+  # Same camera-capable wine as the packaged FHS wrapper (see nix/package.nix):
+  # the plain `stable` set has neither libv4l2 nor winegstreamer, which breaks
+  # camera capture for calls and photos.
+  wine = (pkgs.wineWow64Packages.stable.override {
+    v4lSupport = true;
+    gstreamerSupport = true;
+  }).overrideAttrs (old: {
+    # uninitialised AM_MEDIA_TYPE.pUnk makes ZaloCall fault the moment the
+    # camera is opened on this pure-wow64 build (see the patch header).
+    patches = (old.patches or [ ]) ++ [ ./patches/wine-qcap-wow64-init-media-type.patch ];
+  });
+
   # Pinned to a specific stable release (not `latest`) for reproducibility.
   rustVersion = "1.98.1";
   rustToolchain = pkgs.rust-bin.stable.${rustVersion}.default.override {
@@ -129,7 +141,7 @@ let
       pkgs.gcc_multi
       # wow64 build: runs 32-bit PE binaries (ZaloCall.exe) without a full
       # multilib wine install.
-      pkgs.wineWow64Packages.stable
+      wine
     ]
     ++ electronLibs;
 
