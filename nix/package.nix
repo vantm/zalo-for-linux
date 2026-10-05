@@ -136,14 +136,17 @@ let
     npmDepsHash = versions.npmHashes.zadark;
     npmFlags = [ "--ignore-scripts" ];
 
+    # Only the lockfile copies live in postPatch: buildNpmPackage forwards
+    # postPatch into the npm-deps fixed-output derivation, which has no nodejs.
+    # Any `node` invocation must happen in the main derivation's buildPhase.
     postPatch = ''
       cp ${./zadark-package.json} package.json
       cp ${./zadark-package-lock.json} package-lock.json
-      node ${zadarkExportsPatch}
     '';
 
     buildPhase = ''
       runHook preBuild
+      node ${zadarkExportsPatch}
       NODE_ENV=production ./node_modules/.bin/gulp build
       runHook postBuild
     '';
