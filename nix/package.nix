@@ -44,6 +44,12 @@ let
     hash = versions.hashes.sqlite3;
   };
 
+  # ONNX Runtime, dynamically loaded by the Rust ZOCR host at runtime.
+  onnxruntimeSrc = pkgs.fetchurl {
+    url = "https://github.com/microsoft/onnxruntime/releases/download/v${versions.onnxruntimeVersion}/onnxruntime-linux-x64-${versions.onnxruntimeVersion}.tgz";
+    hash = versions.hashes.onnxruntime;
+  };
+
   # ---------------------------------------------------------------------------
   # Runtime libraries. Shared with the dev shell (nix/runtime-libs.nix) so both
   # expose the same closure. The package wraps the app in an FHS (see mkZalo):
@@ -263,6 +269,27 @@ let
     };
 
   # ---------------------------------------------------------------------------
+  # ZOCR host: on Linux Zalo's OCR engine is this Rust binary. `ort-sys` is used
+  # with `disable-linking`, so libonnxruntime.so is dlopen'd at runtime by
+  # scripts/patches/patch-zocr-runtime.js (staged from ./versions.nix below).
+  # ---------------------------------------------------------------------------
+  zocrHost = pkgs.rustPlatform.buildRustPackage {
+    pname = "zocr-host";
+    version = "0.1.0";
+    src = ../zocr;
+    cargoLock.lockFile = ../zocr/Cargo.lock;
+
+    doCheck = false;
+
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out/bin
+      cp $(find . -name zocr-host -type f -perm -u+x -print -quit) $out/bin/zocr-host
+      runHook postInstall
+    '';
+  };
+
+  # ---------------------------------------------------------------------------
   # Call bridge: a 32-bit LD_PRELOAD shim (streamproxy.so) and an i686 mingw
   # named-pipe pump (pipebridge.exe).
   # ---------------------------------------------------------------------------
@@ -400,6 +427,11 @@ let
       stage_so zimage          ${nativelibs.zimage}/lib/libzimage.so                libzimage.so
       stage_so zjxl            ${nativelibs.zjxl}/lib/libzjxl.so                    libzjxl.so
 
+      # Pre-built OCR host; patch-zocr-runtime copies it after the `cargo` shim
+      # above makes the in-tree `cargo build --release` a no-op.
+      mkdir -p zocr/target/release
+      cp ${zocrHost}/bin/zocr-host zocr/target/release/zocr-host
+
       # ZaDark is pre-built; place it where integrateZaDark/patch-zadark-keep read it.
       mkdir -p plugins/zadark
       rm -rf plugins/zadark/build plugins/zadark/node_modules
@@ -409,6 +441,14 @@ let
       # The DMG the extractor picks up.
       mkdir -p temp
       ln -sf ${zaloDmg} "temp/ZaloSetup-universal-${versions.zaloVersion}.dmg"
+
+      # The Windows installer: prepare-app.js extractWindows() pulls
+      # Zalo-<ver>/plugins/* (capture + ocr) into temp/ for the call runtime and
+      # patch-zocr-runtime.
+      ln -sf ${zaloWinExe} "temp/ZaloSetup-${versions.zaloWinVersion}.exe"
+
+      # ONNX Runtime tarball, so patch-zocr-runtime does not wget it.
+      ln -sf ${onnxruntimeSrc} "temp/onnxruntime-linux-x64-${versions.onnxruntimeVersion}.tgz"
 
       # Everything copied out of the store is read-only.
       chmod -R u+w .
@@ -467,7 +507,7 @@ let
       # The Electron entry point (electron-builder's `files` set).
       mkdir -p $out/resources-app/plugins
       cp main.js package.json $out/resources-app/
-      for p in screenshot launcher-badge userscripts zcall-bridge tray-host start-hidden window-state; do
+      for p in screenshot launcher-badge userscripts zcall-bridge tray-host start-hidden window-state wayland-titlebar; do
         cp -r "plugins/$p" "$out/resources-app/plugins/"
       done
 
@@ -533,13 +573,15 @@ let
           wineTarball
           zadarkSrc
           electronSrc
+          onnxruntimeSrc
+          zocrHost
           zaloApp
           ;
       };
 
       meta = {
         description = "Unofficial Zalo client for Linux (unwrapped app tree)";
-        homepage = "https://github.com/doandat943/zalo-for-linux";
+        homepage = "https://github.com/VN-Linux-Family/zalo-for-linux";
         license = lib.licenses.unfree;
         sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
         mainProgram = "zalo";
@@ -590,7 +632,10 @@ let
 
       targetPkgs =
         _:
-        runtime.electronLibs
+        # runtimeLibs additionally carries stdenv.cc.cc.lib, which provides the
+        # libstdc++.so.6 / libgcc_s.so.1 that zocr-host and the prebuilt
+        # libonnxruntime.so need.
+        runtimeLibs
         ++ [
           wine
           pkgs.xdg-utils
@@ -638,7 +683,7 @@ let
 
       meta = {
         description = "Unofficial Zalo client for Linux";
-        homepage = "https://github.com/doandat943/zalo-for-linux";
+        homepage = "https://github.com/VN-Linux-Family/zalo-for-linux";
         license = lib.licenses.unfree;
         sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
         platforms = [ "x86_64-linux" ];
@@ -659,6 +704,8 @@ in
     zadarkBuild
     nativelibs
     dbCrossV4
+    zocrHost
+    onnxruntimeSrc
     zcallBridge
     zcallRuntime
     zaloApp
