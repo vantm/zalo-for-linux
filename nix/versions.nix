@@ -6,8 +6,8 @@
   # Zalo for macOS (the .dmg the app is extracted from) and the matching
   # Windows installer (the call engine). The two version families usually
   # match, but they are tracked separately because they can diverge.
-  zaloVersion = "26.10.10";
-  zaloWinVersion = "26.10.10";
+  zaloVersion = "26.10.11";
+  zaloWinVersion = "26.10.11";
 
   # ZaDark dark-mode extension (git tag on quaric/zadark).
   zadarkVersion = "26.2.1";
@@ -26,8 +26,8 @@
   onnxruntimeVersion = "1.30.0";
 
   hashes = {
-    dmg = "sha256-BAUtlz/B/gAoteGSy+cnvQ98UcjRQ0V0+R2odhUIr84=";
-    win = "sha256-j4BZYg+S5eGtlCNCnnnJLgkrT9MyRf+2bBlaJZlKl9c=";
+    dmg = "sha256-q1zDKYXlejIpMtFIh+nXKzzfHJ+suOB6vJwQOTraOTc=";
+    win = "sha256-9GXeMwAA5o/7PrS53Y9wEgvevyHTccrvbo+me8Woeqc=";
     wine = "sha256-DBCCucGyqwqFZF7TyDGR3WC1V7KBaXM1Rtgf5ZmtiLM=";
     zadark = "sha256-jxtH8H4DYmW04J2wj3N2B+Tq0V+uwjIS/PSd1IISnN8=";
     electron = "sha256-Yx2OsICYxIzispQh50xprAMSseQvRF2KgFQUuhJCvzo=";
